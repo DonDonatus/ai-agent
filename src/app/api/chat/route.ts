@@ -1,18 +1,13 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-// Define proper types
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+// Check if API key exists
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) {
+  throw new Error('GEMINI_API_KEY is not set in environment variables');
 }
 
-interface GeminiMessage {
-  role: 'user' | 'model';
-  parts: Array<{ text: string }>;
-}
+const genAI = new GoogleGenerativeAI(apiKey);
 
 // System prompt that defines the AI's behavior and knowledge
 const SYSTEM_PROMPT = `
@@ -44,13 +39,27 @@ Formatting:
 
 export async function POST(req: Request) {
   try {
-    const { messages }: { messages: Message[] } = await req.json();
+    // Debug: Log environment variable status (remove this in production)
+    console.log('API Key exists:', !!process.env.GEMINI_API_KEY);
+    console.log('API Key length:', process.env.GEMINI_API_KEY?.length || 0);
+    
+    const { messages } = await req.json();
+
+    // Check if API key exists at runtime
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not found in environment variables');
+      return NextResponse.json(
+        { error: "API key not configured" },
+        { status: 500 }
+      );
+    }
 
     // Initialize the model
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Convert messages to Gemini format and use the conversation history
-    const conversationHistory: GeminiMessage[] = messages.map((message: Message) => {
+    // Convert messages to Gemini format
+    // Gemini expects a different format than OpenAI
+    const conversationHistory = messages.map((message: any) => {
       if (message.role === 'user') {
         return {
           role: 'user',
@@ -62,8 +71,7 @@ export async function POST(req: Request) {
           parts: [{ text: message.content }]
         };
       }
-      return null;
-    }).filter((msg): msg is GeminiMessage => msg !== null);
+    }).filter(Boolean);
 
     // Get the latest user message
     const latestMessage = messages[messages.length - 1];
@@ -71,13 +79,8 @@ export async function POST(req: Request) {
     // Create the full prompt with system instructions
     const fullPrompt = `${SYSTEM_PROMPT}\n\nUser: ${latestMessage.content}`;
 
-    // Start a chat with conversation history for context
-    const chat = model.startChat({
-      history: conversationHistory.slice(0, -1), // All messages except the latest
-    });
-
-    // Generate response using the chat context
-    const result = await chat.sendMessage(fullPrompt);
+    // Generate response
+    const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     const text = response.text();
 
@@ -88,8 +91,18 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("Error calling Gemini:", error);
+    
+    // More detailed error logging
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    
     return NextResponse.json(
-      { error: "Error processing your request" },
+      { 
+        error: "Error processing your request",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
