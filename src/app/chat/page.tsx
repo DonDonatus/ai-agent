@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, Menu, Settings, MessageSquare, X, ThumbsUp, ThumbsDown ,Building2 } from 'lucide-react';
+import { Send, User,  Menu, Settings, MessageSquare, X, ThumbsUp, ThumbsDown ,Building2 } from 'lucide-react';
 
 // Type definitions
 type Theme = 'light' | 'dark' | 'very-dark';
