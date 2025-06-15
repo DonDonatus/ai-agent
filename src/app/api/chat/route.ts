@@ -31,28 +31,18 @@ Formatting:
 - Structure complex answers with clear sections
 `;
 
+// Define message type
+interface Message {
+  role: string;
+  content: string;
+}
+
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages }: { messages: Message[] } = await req.json();
 
     // Initialize the model
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    // Convert messages to Gemini format
-    // Gemini expects a different format than OpenAI
-    const conversationHistory = messages.map((message: any) => {
-      if (message.role === 'user') {
-        return {
-          role: 'user',
-          parts: [{ text: message.content }]
-        };
-      } else if (message.role === 'assistant') {
-        return {
-          role: 'model',
-          parts: [{ text: message.content }]
-        };
-      }
-    }).filter(Boolean);
 
     // Get the latest user message
     const latestMessage = messages[messages.length - 1];
