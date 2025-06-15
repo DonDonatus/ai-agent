@@ -3,17 +3,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Define proper types
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-interface GeminiMessage {
-  role: 'user' | 'model';
-  parts: Array<{ text: string }>;
-}
-
 // System prompt that defines the AI's behavior and knowledge
 const SYSTEM_PROMPT = `
 You are VB Capital AI, an expert assistant for VB Capital, a venture capital firm. 
@@ -44,13 +33,14 @@ Formatting:
 
 export async function POST(req: Request) {
   try {
-    const { messages }: { messages: Message[] } = await req.json();
+    const { messages } = await req.json();
 
     // Initialize the model
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Convert messages to Gemini format and use the conversation history
-    const conversationHistory: GeminiMessage[] = messages.map((message: Message) => {
+    // Convert messages to Gemini format
+    // Gemini expects a different format than OpenAI
+    const conversationHistory = messages.map((message: any) => {
       if (message.role === 'user') {
         return {
           role: 'user',
@@ -62,8 +52,7 @@ export async function POST(req: Request) {
           parts: [{ text: message.content }]
         };
       }
-      return null;
-    }).filter((msg): msg is GeminiMessage => msg !== null);
+    }).filter(Boolean);
 
     // Get the latest user message
     const latestMessage = messages[messages.length - 1];
@@ -71,13 +60,8 @@ export async function POST(req: Request) {
     // Create the full prompt with system instructions
     const fullPrompt = `${SYSTEM_PROMPT}\n\nUser: ${latestMessage.content}`;
 
-    // Start a chat with conversation history for context
-    const chat = model.startChat({
-      history: conversationHistory.slice(0, -1), // All messages except the latest
-    });
-
-    // Generate response using the chat context
-    const result = await chat.sendMessage(fullPrompt);
+    // Generate response
+    const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     const text = response.text();
 

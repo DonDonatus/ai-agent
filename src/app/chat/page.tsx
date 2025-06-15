@@ -436,7 +436,7 @@ export default function ChatPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([{
     role: 'assistant', 
-    content: 'Hello! I\'m your VB Capital AI Assistant. I can help with understanding company information, sorting emails and business related conversations. How can I assist you today?',
+    content: 'Hello! I\'m your VB Capital AI Assistant. I can help with understanding company information, sorting emails and business related. How can I assist you today?',
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }]);
   const [input, setInput] = useState<string>('');
